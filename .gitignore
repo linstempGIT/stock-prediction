@@ -2,6 +2,9 @@
 data/baseInfo/*
 data/dailyInfo/*
 data/visualImage/*
+data/processed/*
+data/models/*
+data/exampleData/*
 
 # 忽略测试配置文件和结果目录
 logs/
