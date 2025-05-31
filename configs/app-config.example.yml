@@ -1,0 +1,23 @@
+# 应用配置文件示例
+# 请复制此文件为 app-config.yml 并填写实际值
+
+# 环境配置 (dev 或 prod)
+config_env: dev  # 设置为 dev 或 prod 以选择环境
+
+# 开发环境配置
+dev:
+  # Tushare API 令牌
+  tushare_token: "your_dev_token_here"
+  # 可以在此添加其他开发环境配置
+  # other_config: "value"
+
+# 生产环境配置
+prod:
+  # Tushare API 令牌
+  tushare_token: "your_prod_token_here"
+  # 可以在此添加其他生产环境配置
+  # other_config: "value"
+
+# 通用配置（所有环境共享）
+# common:
+#   log_level: "info"

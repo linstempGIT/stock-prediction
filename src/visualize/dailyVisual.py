@@ -3,13 +3,14 @@
 import os
 import sys
 import argparse
+from src.utils.tsCodeUtils import normalize_ts_code, is_valid_ts_code
 import subprocess
 import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 
 # 导入中文字体设置模块
-from src.utils.chinese_font import setup_chinese_font
+from src.utils.chineseFont import setup_chinese_font
 
 def main():
     # 设置中文字体支持
@@ -23,6 +24,13 @@ def main():
     
     args = parser.parse_args()
     
+    # 标准化和验证股票代码
+    normalized_ts_code = normalize_ts_code(args.ts_code)
+    if not is_valid_ts_code(normalized_ts_code):
+        print(f"股票代码格式错误: {args.ts_code}，应为'XXXXXX.XX'格式")
+        exit(1)
+    args.ts_code = normalized_ts_code
+    
     # 构建预期的文件名
     start_str = args.start_date or 'all'
     end_str = args.end_date or 'now'
@@ -30,7 +38,7 @@ def main():
     
     # 使用相对路径访问数据目录
     project_root = Path(__file__).resolve().parent.parent.parent
-    data_dir = project_root / 'src' / 'data' / 'dailyInfo'
+    data_dir = project_root / 'data' / 'dailyInfo'
     data_path = data_dir / data_filename
     
     print(f"数据文件路径: {data_path}")
@@ -92,7 +100,7 @@ def main():
         
         # 创建可视化图像目录
         # 使用相对路径访问图像目录
-        img_dir = project_root / 'src' / 'data' / 'visualImage'
+        img_dir = project_root / 'data' / 'visualImage'
         print(f"图表保存目录: {img_dir}")
         img_dir.mkdir(parents=True, exist_ok=True)
         

@@ -4,52 +4,47 @@ import akshare as ak
 import tushare as ts
 import os
 from datetime import datetime
-
+from .loadConfig import load_config  # 导入配置加载模块
 import argparse
+from typing import Optional
 
-def get_companies_info():
-    """从公开数据源获取全量上市公司基本信息"""
+def fetch_and_save_companies_info(
+    tushare_token: Optional[str] = None,
+    skip_confirm: bool = False,
+    output_path: Optional[Path] = None
+) -> Optional[Path]:
+    """
+    核心函数：获取上市公司信息并保存到CSV文件
+    
+    参数:
+        tushare_token: Tushare API Token
+        skip_confirm: 是否跳过文件覆盖确认
+        output_path: 输出文件路径，默认为项目目录下的data/baseInfo/companies_info.csv
+    
+    返回:
+        成功时返回文件路径，失败时返回None
+    """
     try:
-        # 解析命令行参数
-        parser = argparse.ArgumentParser(description='上市公司基本信息采集工具',
-                                       formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        parser.add_argument('-t', '--token', 
-                          help='Tushare API Token（优先级高于环境变量）')
-        parser.add_argument('-s', '--skip-confirm', 
-                          action='store_true',
-                          help='跳过文件覆盖确认提示')
-        args = parser.parse_args()
+        # 设置默认输出路径
+        if output_path is None:
+            output_path = Path(__file__).parent.parent.parent / 'data' / 'baseInfo' / 'companies_info.csv'
         
-        # 初始化输出路径
-        output_path = Path(__file__).parent.parent / 'data' / 'baseInfo' / 'companies_info.csv'
-        
-        # 提前检查文件存在性
-        if output_path.exists():
-            if not args.skip_confirm:
-                try:
-                    confirm = input(f"文件 {output_path} 已存在，是否覆盖？[y/N]: ").strip().lower()
-                    if confirm not in ('y', 'yes'):
-                        print("操作已取消")
-                        return None
-                except EOFError:
-                    print("检测到非交互式环境，使用 -s 参数跳过确认")
-                    return None
-            else:
-                print(f"覆盖已存在的文件: {output_path}")
-                
         # 确保输出目录存在
         output_path.parent.mkdir(parents=True, exist_ok=True)
-
+        
+        # 提前检查文件存在性
+        if output_path.exists() and not skip_confirm:
+            try:
+                confirm = input(f"文件 {output_path} 已存在，是否覆盖？[y/N]: ").strip().lower()
+                if confirm not in ('y', 'yes'):
+                    print("操作已取消")
+                    return None
+            except EOFError:
+                print("检测到非交互式环境，使用 skip_confirm=True 跳过确认")
+                return None
+        
         # 获取基础数据
         stock_info_a_code_name_df = ak.stock_info_a_code_name()
-        
-        # 获取Tushare token（优先命令行参数）
-        tushare_token = args.token or os.getenv('TUSHARE_TOKEN')
-        if not tushare_token and not args.skip_confirm:
-            try:
-                tushare_token = input("请输入Tushare API Token（无token直接回车跳过详细信息获取）：")
-            except EOFError:
-                tushare_token = ''
         
         # 初始化基础列
         df = pd.DataFrame({
@@ -69,7 +64,7 @@ def get_companies_info():
         df = df.assign(**default_cols)
         
         # 如果有有效token则获取详细信息
-        if tushare_token.strip():
+        if tushare_token and tushare_token.strip():
             try:
                 ts.set_token(tushare_token)
                 pro = ts.pro_api()
@@ -135,6 +130,38 @@ def get_companies_info():
     except Exception as e:
         print(f"数据获取失败: {str(e)}")
         return None
+
+def get_companies_info():
+    """命令行接口：从公开数据源获取全量上市公司基本信息"""
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description='上市公司基本信息采集工具',
+                                   formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-t', '--token', 
+                      help='Tushare API Token（优先级高于环境变量）')
+    parser.add_argument('-s', '--skip-confirm', 
+                      action='store_true',
+                      help='跳过文件覆盖确认提示')
+    args = parser.parse_args()
+    
+    # 加载配置（确保环境变量可用）
+    load_config()
+    
+    # 获取Tushare token（优先命令行参数）
+    tushare_token = args.token or os.getenv('TUSHARE_TOKEN')
+    
+    # 打印token来源信息
+    if args.token:
+        print(f"✅ 使用命令行提供的 Tushare Token")
+    elif tushare_token:
+        print(f"✅ TUSHARE_TOKEN 已从环境变量加载")
+    else:
+        print("⚠️ 未提供 Tushare Token，仅获取基本信息")
+    
+    # 调用核心业务逻辑
+    return fetch_and_save_companies_info(
+        tushare_token=tushare_token,
+        skip_confirm=args.skip_confirm
+    )
 
 if __name__ == "__main__":
     path = get_companies_info()
